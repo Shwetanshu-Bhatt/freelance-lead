@@ -25,7 +25,7 @@ export const leadSchema = z.object({
   reviewCount: z.number().min(0).default(0),
   googleMapsUrl: z.string().url("Invalid URL").optional().or(z.literal("")),
   address: addressSchema.default({}),
-  status: z.enum(["lead_generated", "contacted", "declined", "proposed"]).default("lead_generated"),
+  status: z.enum(["lead_generated", "contacted", "to_send", "declined", "proposed"]).default("lead_generated"),
   source: z.enum(["manual", "google", "referral", "social_media", "website", "other"]).default("manual"),
   tags: z.array(z.string()).default([]),
   notes: z.string().optional(),
@@ -38,7 +38,7 @@ export const leadUpdateSchema = leadSchema.partial().extend({
 
 export const bulkStatusUpdateSchema = z.object({
   leadIds: z.array(z.string()),
-  status: z.enum(["lead_generated", "contacted", "declined", "proposed"]),
+  status: z.enum(["lead_generated", "contacted", "to_send", "declined", "proposed"]),
 });
 
 export type CategoryInput = z.infer<typeof categorySchema>;

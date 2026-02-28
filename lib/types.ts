@@ -1,6 +1,7 @@
 export type LeadStatus = 
   | "lead_generated"
   | "contacted"
+  | "to_send"
   | "declined"
   | "proposed";
 

@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Users,
   Phone,
+  Mail,
   XCircle,
   Send,
   Tag,
@@ -17,6 +18,7 @@ const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/leads", label: "Leads", icon: Users },
   { href: "/contacted", label: "Contacted", icon: Phone },
+  { href: "/to-send", label: "To Send", icon: Mail },
   { href: "/declined", label: "Declined", icon: XCircle },
   { href: "/proposed", label: "Proposed", icon: Send },
   { href: "/categories", label: "Categories", icon: Tag },
@@ -65,8 +67,7 @@ export function Navbar() {
               href="/leads/new"
               className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 hover:shadow-md active:scale-[0.98]"
             >
-              <Plus className="mr-2 h-4 w-4" />
-              New Lead
+              Add New Lead
             </Link>
           </div>
         </div>

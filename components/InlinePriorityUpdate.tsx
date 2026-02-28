@@ -16,6 +16,13 @@ const priorityOptions = Object.entries(priorityLabels).map(([value, label]) => (
   label,
 }));
 
+const priorityColors: Record<Priority, string> = {
+  low: "bg-green-100 text-green-800 border-green-300",
+  medium: "bg-blue-100 text-blue-800 border-blue-300",
+  high: "bg-orange-100 text-orange-800 border-orange-300",
+  urgent: "bg-red-100 text-red-800 border-red-300",
+};
+
 export function InlinePriorityUpdate({ leadId, currentPriority }: InlinePriorityUpdateProps) {
   const router = useRouter();
   const [priority, setPriority] = useState(currentPriority);
@@ -46,7 +53,9 @@ export function InlinePriorityUpdate({ leadId, currentPriority }: InlinePriority
       value={priority}
       onChange={handleChange}
       disabled={isUpdating}
-      className={`text-sm border border-slate-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+      className={`text-sm rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-offset-1 ${
+        priorityColors[priority]
+      } ${
         isUpdating ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
       }`}
     >

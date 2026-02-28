@@ -1,4 +1,4 @@
-import { getLeads, getAllTags, getCities } from "@/app/actions/leads";
+import { getLeads } from "@/app/actions/leads";
 import { getCategories } from "@/app/actions/categories";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,26 +9,21 @@ import { StarRating } from "@/components/StarRating";
 import { InlineStatusUpdate } from "@/components/InlineStatusUpdate";
 import { InlineNotes } from "@/components/InlineNotes";
 import { InlinePriorityUpdate } from "@/components/InlinePriorityUpdate";
-import { ILead, LeadStatus, LeadSource, Priority } from "@/lib/types";
-import { sourceLabels, priorityLabels, formatDate } from "@/lib/utils";
+import { LeadFilters } from "@/components/LeadFilters";
+import { CopyButton } from "@/components/CopyButton";
+import { ILead, LeadStatus, Priority } from "@/lib/types";
+import { priorityLabels, formatDate } from "@/lib/utils";
 import Link from "next/link";
-import { Search, Filter, Phone, Mail, Plus } from "lucide-react";
+import { Phone, Mail, Plus, MapPin } from "lucide-react";
 
 interface LeadsPageProps {
   searchParams: Promise<{
     category?: string;
-    city?: string;
-    source?: LeadSource;
     priority?: Priority;
     search?: string;
     page?: string;
   }>;
 }
-
-const sourceOptions: { value: string; label: string }[] = [
-  { value: "", label: "All Sources" },
-  ...Object.entries(sourceLabels).map(([value, label]) => ({ value, label })),
-];
 
 const priorityOptions: { value: string; label: string }[] = [
   { value: "", label: "All Priorities" },
@@ -41,24 +36,18 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
   const filters = {
     category: params.category,
     status: "lead_generated" as LeadStatus,
-    city: params.city,
-    source: params.source,
     priority: params.priority,
     search: params.search,
   };
 
-  const [leadsResult, categoriesResult, tagsResult, citiesResult] = await Promise.all([
+  const [leadsResult, categoriesResult] = await Promise.all([
     getLeads(filters, { field: "createdAt", order: "desc" }, page, 20),
     getCategories(),
-    getAllTags(),
-    getCities(),
   ]);
 
   const leads: ILead[] = leadsResult.success && leadsResult.data ? leadsResult.data : [];
   const pagination = leadsResult.success && leadsResult.pagination ? leadsResult.pagination : null;
   const categories = categoriesResult.success && categoriesResult.data ? categoriesResult.data : [];
-  const tags = tagsResult.success && tagsResult.data ? tagsResult.data : [];
-  const cities = citiesResult.success && citiesResult.data ? citiesResult.data : [];
 
   const categoryOptions = [
     { value: "", label: "All Categories" },
@@ -66,11 +55,6 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
       value: cat._id,
       label: cat.name,
     })),
-  ];
-
-  const cityOptions = [
-    { value: "", label: "All Cities" },
-    ...cities.map((city: string) => ({ value: city, label: city })),
   ];
 
   return (
@@ -93,48 +77,11 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                name="search"
-                placeholder="Search leads..."
-                defaultValue={params.search}
-                className="pl-10"
-              />
-            </div>
-            <Select
-              name="category"
-              options={categoryOptions}
-              defaultValue={params.category || ""}
-            />
-            <Select
-              name="city"
-              options={cityOptions}
-              defaultValue={params.city || ""}
-            />
-            <Select
-              name="source"
-              options={sourceOptions}
-              defaultValue={params.source || ""}
-            />
-            <Select
-              name="priority"
-              options={priorityOptions}
-              defaultValue={params.priority || ""}
-            />
-            <div className="flex gap-2 sm:col-span-2 lg:col-span-4 xl:col-span-6">
-              <Button type="submit" variant="primary">
-                <Filter className="mr-2 h-4 w-4" />
-                Filter
-              </Button>
-              <Link href="/leads">
-                <Button type="button" variant="outline">
-                  Clear
-                </Button>
-              </Link>
-            </div>
-          </form>
+          <LeadFilters
+            categoryOptions={categoryOptions}
+            priorityOptions={priorityOptions}
+            basePath="/leads"
+          />
         </CardContent>
       </Card>
 
@@ -151,6 +98,7 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Rating</th>
                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Priority</th>
                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Contact</th>
+                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Maps</th>
                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Notes</th>
                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Created</th>
                 </tr>
@@ -158,14 +106,17 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
               <tbody className="divide-y divide-slate-200">
                 {leads.map((lead) => (
                   <tr key={lead._id} className="hover:bg-slate-50">
-                     <td className="px-4 py-3">
-                       <Link href={`/leads/${lead._id}`} className="block">
-                         <p className="font-medium text-slate-900 hover:text-blue-600">{lead.name}</p>
-                         {lead.contactPerson && (
-                           <p className="text-sm text-slate-500">{lead.contactPerson}</p>
-                         )}
-                       </Link>
-                     </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Link href={`/leads/${lead._id}`} className="block flex-1">
+                            <p className="font-medium text-slate-900 hover:text-blue-600">{lead.name}</p>
+                            {lead.contactPerson && (
+                              <p className="text-sm text-slate-500">{lead.contactPerson}</p>
+                            )}
+                          </Link>
+                          <CopyButton text={lead.name} />
+                        </div>
+                      </td>
                      <td className="px-4 py-3">
                        <InlineStatusUpdate leadId={lead._id} currentStatus={lead.status} />
                      </td>
@@ -180,24 +131,45 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
                      <td className="px-4 py-3">
                        <InlinePriorityUpdate leadId={lead._id} currentPriority={lead.priority} />
                      </td>
-                     <td className="px-4 py-3">
-                       <div className="flex flex-col gap-1">
-                         {lead.phone && (
-                           <a href={`tel:${lead.phone}`} className="flex items-center text-sm text-slate-600 hover:text-blue-600">
-                             <Phone className="mr-1 h-3 w-3" />
-                             {lead.phone}
-                           </a>
-                         )}
-                         {lead.email && (
-                           <a href={`mailto:${lead.email}`} className="flex items-center text-sm text-slate-600 hover:text-blue-600">
-                             <Mail className="mr-1 h-3 w-3" />
-                             {lead.email}
-                           </a>
-                         )}
-                       </div>
-                     </td>
-                     <td className="px-4 py-3">
-                       <InlineNotes leadId={lead._id} existingNotes={lead.notes} />
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1">
+                          {lead.phone && (
+                            <div className="flex items-center gap-1">
+                              <a href={`tel:${lead.phone}`} className="flex items-center text-sm text-slate-600 hover:text-blue-600">
+                                <Phone className="mr-1 h-3 w-3" />
+                                {lead.phone}
+                              </a>
+                              <CopyButton text={lead.phone} />
+                            </div>
+                          )}
+                          {lead.email && (
+                            <div className="flex items-center gap-1">
+                              <a href={`mailto:${lead.email}`} className="flex items-center text-sm text-slate-600 hover:text-blue-600">
+                                <Mail className="mr-1 h-3 w-3" />
+                                {lead.email}
+                              </a>
+                              <CopyButton text={lead.email} />
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {lead.googleMapsUrl ? (
+                          <a
+                            href={lead.googleMapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center text-sm text-blue-600 hover:underline"
+                          >
+                            <MapPin className="mr-1 h-4 w-4" />
+                            View
+                          </a>
+                        ) : (
+                          <span className="text-slate-400 text-sm">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <InlineNotes leadId={lead._id} existingNotes={lead.notes} />
                      </td>
                      <td className="px-4 py-3 text-sm text-slate-600">
                        {formatDate(lead.createdAt)}
@@ -206,7 +178,7 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
                 ))}
                 {leads.length === 0 && (
                   <tr>
-                     <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                     <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
                       No new leads found. <Link href="/leads/new" className="text-blue-600 hover:underline">Create your first lead</Link>
                     </td>
                   </tr>

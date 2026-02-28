@@ -9,14 +9,17 @@ import { StarRating } from "@/components/StarRating";
 import { InlineStatusUpdate } from "@/components/InlineStatusUpdate";
 import { InlineNotes } from "@/components/InlineNotes";
 import { InlinePriorityUpdate } from "@/components/InlinePriorityUpdate";
-import { ILead } from "@/lib/types";
-import { formatDate } from "@/lib/utils";
+import { LeadFilters } from "@/components/LeadFilters";
+import { CopyButton } from "@/components/CopyButton";
+import { ILead, Priority } from "@/lib/types";
+import { formatDate, priorityLabels } from "@/lib/utils";
 import Link from "next/link";
-import { Search, Phone, Mail } from "lucide-react";
+import { Phone, Mail, MapPin } from "lucide-react";
 
 interface ProposedPageProps {
   searchParams: Promise<{
     category?: string;
+    priority?: Priority;
     search?: string;
     page?: string;
   }>;
@@ -28,7 +31,7 @@ export default async function ProposedPage({ searchParams }: ProposedPageProps) 
 
   const [leadsResult, categoriesResult] = await Promise.all([
     getLeads(
-      { status: "proposed", isDeleted: false, category: params.category, search: params.search },
+      { status: "proposed", isDeleted: false, category: params.category, priority: params.priority, search: params.search },
       { field: "createdAt", order: "desc" },
       page,
       20
@@ -48,6 +51,11 @@ export default async function ProposedPage({ searchParams }: ProposedPageProps) 
     })),
   ];
 
+  const priorityOptions: { value: string; label: string }[] = [
+    { value: "", label: "All Priorities" },
+    ...Object.entries(priorityLabels).map(([value, label]) => ({ value, label })),
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -57,35 +65,17 @@ export default async function ProposedPage({ searchParams }: ProposedPageProps) 
             {pagination?.total || 0} leads with offer sent
           </p>
         </div>
-        <Link href="/leads/new">
-          <Button>Add New Lead</Button>
-        </Link>
+
       </div>
 
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <form className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                name="search"
-                placeholder="Search proposed leads..."
-                defaultValue={params.search}
-                className="pl-10"
-              />
-            </div>
-            <Select
-              name="category"
-              options={categoryOptions}
-              defaultValue={params.category || ""}
-              className="sm:w-48"
-            />
-            <Button type="submit">Filter</Button>
-            <Link href="/proposed">
-              <Button type="button" variant="outline">Clear</Button>
-            </Link>
-          </form>
+          <LeadFilters
+            categoryOptions={categoryOptions}
+            priorityOptions={priorityOptions}
+            basePath="/proposed"
+          />
         </CardContent>
       </Card>
 
@@ -102,6 +92,7 @@ export default async function ProposedPage({ searchParams }: ProposedPageProps) 
                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Rating</th>
                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Priority</th>
                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Contact</th>
+                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Maps</th>
                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Notes</th>
                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Updated</th>
                  </tr>
@@ -109,14 +100,17 @@ export default async function ProposedPage({ searchParams }: ProposedPageProps) 
               <tbody className="divide-y divide-slate-200">
                 {leads.map((lead) => (
                   <tr key={lead._id} className="hover:bg-slate-50">
-                     <td className="px-4 py-3">
-                       <Link href={`/leads/${lead._id}`} className="block">
-                         <p className="font-semibold text-slate-900 hover:text-blue-600">{lead.name}</p>
-                         {lead.contactPerson && (
-                           <p className="text-sm text-slate-500">{lead.contactPerson}</p>
-                         )}
-                       </Link>
-                     </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Link href={`/leads/${lead._id}`} className="block flex-1">
+                            <p className="font-semibold text-slate-900 hover:text-blue-600">{lead.name}</p>
+                            {lead.contactPerson && (
+                              <p className="text-sm text-slate-500">{lead.contactPerson}</p>
+                            )}
+                          </Link>
+                          <CopyButton text={lead.name} />
+                        </div>
+                      </td>
                      <td className="px-4 py-3">
                        <InlineStatusUpdate leadId={lead._id} currentStatus={lead.status} />
                      </td>
@@ -131,33 +125,54 @@ export default async function ProposedPage({ searchParams }: ProposedPageProps) 
                      <td className="px-4 py-3">
                        <InlinePriorityUpdate leadId={lead._id} currentPriority={lead.priority} />
                      </td>
-                     <td className="px-4 py-3">
-                       <div className="flex flex-col gap-1">
-                         {lead.phone && (
-                           <a href={`tel:${lead.phone}`} className="flex items-center text-sm text-blue-600 hover:underline">
-                             <Phone className="mr-1 h-3 w-3" />
-                             {lead.phone}
-                           </a>
-                         )}
-                         {lead.email && (
-                           <a href={`mailto:${lead.email}`} className="flex items-center text-sm text-blue-600 hover:underline">
-                             <Mail className="mr-1 h-3 w-3" />
-                             {lead.email}
-                           </a>
-                         )}
-                       </div>
-                     </td>
-                     <td className="px-4 py-3">
-                       <InlineNotes leadId={lead._id} existingNotes={lead.notes} />
-                     </td>
-                     <td className="px-4 py-3 text-sm text-slate-600">
-                       {formatDate(lead.updatedAt)}
-                     </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1">
+                          {lead.phone && (
+                            <div className="flex items-center gap-1">
+                              <a href={`tel:${lead.phone}`} className="flex items-center text-sm text-blue-600 hover:underline">
+                                <Phone className="mr-1 h-3 w-3" />
+                                {lead.phone}
+                              </a>
+                              <CopyButton text={lead.phone} />
+                            </div>
+                          )}
+                          {lead.email && (
+                            <div className="flex items-center gap-1">
+                              <a href={`mailto:${lead.email}`} className="flex items-center text-sm text-blue-600 hover:underline">
+                                <Mail className="mr-1 h-3 w-3" />
+                                {lead.email}
+                              </a>
+                              <CopyButton text={lead.email} />
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {lead.googleMapsUrl ? (
+                          <a
+                            href={lead.googleMapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center text-sm text-blue-600 hover:underline"
+                          >
+                            <MapPin className="mr-1 h-4 w-4" />
+                            View
+                          </a>
+                        ) : (
+                          <span className="text-slate-400 text-sm">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <InlineNotes leadId={lead._id} existingNotes={lead.notes} />
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-600">
+                        {formatDate(lead.updatedAt)}
+                      </td>
                    </tr>
                 ))}
                 {leads.length === 0 && (
                   <tr>
-                     <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                     <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
                       No proposed leads found.
                     </td>
                   </tr>

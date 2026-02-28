@@ -40,6 +40,7 @@ export const statusColors: Record<string, string> = {
 export const statusLabels: Record<string, string> = {
   lead_generated: "Lead Generated",
   contacted: "Contacted",
+  to_send: "To Send",
   declined: "Declined",
   proposed: "Proposed",
 };

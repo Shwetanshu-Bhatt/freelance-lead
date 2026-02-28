@@ -85,7 +85,7 @@ const LeadSchema = new Schema<ILeadDocument>(
     status: {
       type: String,
       enum: {
-        values: ["lead_generated", "contacted", "declined", "proposed"],
+        values: ["lead_generated", "contacted", "to_send", "declined", "proposed"],
         message: "Status {VALUE} is not supported",
       },
       default: "lead_generated",

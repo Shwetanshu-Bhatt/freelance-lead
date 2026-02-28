@@ -59,7 +59,14 @@ export async function getLeads(
     }
     
     if (filters.search) {
-      query.$text = { $search: filters.search };
+      const searchRegex = { $regex: filters.search, $options: "i" };
+      query.$or = [
+        { name: searchRegex },
+        { contactPerson: searchRegex },
+        { phone: searchRegex },
+        { email: searchRegex },
+        { notes: searchRegex },
+      ];
     }
     
     const sortOption: Record<string, 1 | -1> = {

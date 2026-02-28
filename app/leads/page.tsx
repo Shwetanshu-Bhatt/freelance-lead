@@ -104,8 +104,11 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {leads.map((lead) => (
-                  <tr key={lead._id} className="hover:bg-slate-50">
+    {leads.map((lead, index) => (
+                <tr
+                  key={lead._id}
+                  className="hover:bg-slate-50 transition-all duration-200 ease-out group"
+                >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Link href={`/leads/${lead._id}`} className="block flex-1">

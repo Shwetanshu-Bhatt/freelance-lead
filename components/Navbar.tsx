@@ -12,6 +12,7 @@ import {
   Send,
   Tag,
   Plus,
+  FileText,
 } from "lucide-react";
 
 const navItems = [
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/declined", label: "Declined", icon: XCircle },
   { href: "/proposed", label: "Proposed", icon: Send },
   { href: "/categories", label: "Categories", icon: Tag },
+  { href: "/notes", label: "Notes", icon: FileText },
 ];
 
 export function Navbar() {

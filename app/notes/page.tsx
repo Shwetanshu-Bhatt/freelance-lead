@@ -1,144 +1,132 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { FileText, Save, Trash2, Download, Plus } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { FileText, Trash2, Download, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { getNotes, createNote, updateNote, deleteNote } from "@/app/actions/notes";
 
 interface Note {
-  id: string;
+  _id: string;
   title: string;
   content: string;
-  updatedAt: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export default function NotesPage() {
+  const router = useRouter();
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Load notes from localStorage on mount
+  // Load notes on mount
   useEffect(() => {
-    const savedNotes = localStorage.getItem("leadgen-notes");
-    if (savedNotes) {
-      try {
-        const parsed = JSON.parse(savedNotes);
-        setNotes(parsed);
-        if (parsed.length > 0) {
-          setActiveNoteId(parsed[0].id);
-          setTitle(parsed[0].title);
-          setContent(parsed[0].content);
-        }
-      } catch (e) {
-        console.error("Failed to parse notes:", e);
-      }
-    }
-    setIsLoaded(true);
+    loadNotes();
   }, []);
 
-  // Save notes to localStorage whenever they change
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem("leadgen-notes", JSON.stringify(notes));
+  const loadNotes = async () => {
+    setIsLoading(true);
+    const result = await getNotes();
+    if (result.success && result.data) {
+      setNotes(result.data);
+      if (result.data.length > 0) {
+        setActiveNoteId(result.data[0]._id);
+        setTitle(result.data[0].title);
+        setContent(result.data[0].content);
+      }
     }
-  }, [notes, isLoaded]);
-
-  // Auto-save when typing stops
-  useEffect(() => {
-    if (activeNoteId && isLoaded) {
-      const timeoutId = setTimeout(() => {
-        setNotes((prev) =>
-          prev.map((note) =>
-            note.id === activeNoteId
-              ? { ...note, title: title || "Untitled Note", content, updatedAt: new Date().toISOString() }
-              : note
-          )
-        );
-      }, 1000);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [title, content, activeNoteId, isLoaded]);
-
-  const createNewNote = () => {
-    const newNote: Note = {
-      id: Date.now().toString(),
-      title: "New Note",
-      content: "",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setNotes((prev) => [newNote, ...prev]);
-    setActiveNoteId(newNote.id);
-    setTitle(newNote.title);
-    setContent(newNote.content);
+    setIsLoading(false);
   };
 
-  const selectNote = (note: Note) => {
+  const handleCreateNote = async () => {
+    const result = await createNote("New Note", "");
+    if (result.success && result.data) {
+      setNotes((prev) => [result.data, ...prev]);
+      setActiveNoteId(result.data._id);
+      setTitle(result.data.title);
+      setContent(result.data.content);
+      router.refresh();
+    }
+  };
+
+  const handleSelectNote = async (note: Note) => {
     // Save current note before switching
     if (activeNoteId) {
-      setNotes((prev) =>
-        prev.map((n) =>
-          n.id === activeNoteId
-            ? { ...n, title: title || "Untitled Note", content, updatedAt: new Date().toISOString() }
-            : n
-        )
-      );
+      await saveCurrentNote();
     }
-    setActiveNoteId(note.id);
+    setActiveNoteId(note._id);
     setTitle(note.title);
     setContent(note.content);
   };
 
-  const handleTitleBlur = () => {
-    if (activeNoteId) {
-      setNotes((prev) =>
-        prev.map((note) =>
-          note.id === activeNoteId
-            ? { ...note, title: title || "Untitled Note", updatedAt: new Date().toISOString() }
-            : note
-        )
-      );
+  const saveCurrentNote = async () => {
+    if (!activeNoteId) return;
+    
+    setIsSaving(true);
+    const currentNote = notes.find((n) => n._id === activeNoteId);
+    
+    // Only save if there are changes
+    if (currentNote && (currentNote.title !== title || currentNote.content !== content)) {
+      const result = await updateNote(activeNoteId, {
+        title: title || "Untitled Note",
+        content,
+      });
+      
+      if (result.success && result.data) {
+        setNotes((prev) =>
+          prev.map((note) => (note._id === activeNoteId ? result.data : note))
+        );
+      }
     }
+    setIsSaving(false);
+  };
+
+  const handleTitleBlur = () => {
+    saveCurrentNote();
   };
 
   const handleContentBlur = () => {
-    if (activeNoteId) {
-      setNotes((prev) =>
-        prev.map((note) =>
-          note.id === activeNoteId
-            ? { ...note, content, updatedAt: new Date().toISOString() }
-            : note
-        )
-      );
-    }
+    saveCurrentNote();
   };
 
-  const deleteNote = (id: string, e: React.MouseEvent) => {
+  const handleDeleteNote = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setNotes((prev) => prev.filter((note) => note.id !== id));
-    if (activeNoteId === id) {
-      const remaining = notes.filter((note) => note.id !== id);
-      if (remaining.length > 0) {
-        setActiveNoteId(remaining[0].id);
-        setTitle(remaining[0].title);
-        setContent(remaining[0].content);
-      } else {
-        setActiveNoteId(null);
-        setTitle("");
-        setContent("");
+    
+    if (!confirm("Are you sure you want to delete this note?")) {
+      return;
+    }
+    
+    const result = await deleteNote(id);
+    if (result.success) {
+      setNotes((prev) => prev.filter((note) => note._id !== id));
+      
+      if (activeNoteId === id) {
+        const remaining = notes.filter((note) => note._id !== id);
+        if (remaining.length > 0) {
+          setActiveNoteId(remaining[0]._id);
+          setTitle(remaining[0].title);
+          setContent(remaining[0].content);
+        } else {
+          setActiveNoteId(null);
+          setTitle("");
+          setContent("");
+        }
       }
+      router.refresh();
     }
   };
 
   const downloadNote = () => {
     if (!activeNoteId) return;
-    const noteToDownload = notes.find((n) => n.id === activeNoteId);
+    const noteToDownload = notes.find((n) => n._id === activeNoteId);
     if (!noteToDownload) return;
 
     const blob = new Blob([noteToDownload.content], { type: "text/plain" });
@@ -162,7 +150,15 @@ export default function NotesPage() {
     });
   };
 
-  const activeNote = notes.find((n) => n.id === activeNoteId);
+  const activeNote = notes.find((n) => n._id === activeNoteId);
+
+  if (isLoading) {
+    return (
+      <div className="h-[calc(100vh-8rem)] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[calc(100vh-8rem)]">
@@ -183,7 +179,7 @@ export default function NotesPage() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">My Notes</CardTitle>
               <Button
-                onClick={createNewNote}
+                onClick={handleCreateNote}
                 size="sm"
                 className="bg-blue-600 hover:bg-blue-700"
               >
@@ -203,11 +199,11 @@ export default function NotesPage() {
               <div className="space-y-2">
                 {notes.map((note) => (
                   <div
-                    key={note.id}
-                    onClick={() => selectNote(note)}
+                    key={note._id}
+                    onClick={() => handleSelectNote(note)}
                     className={cn(
                       "w-full text-left p-3 rounded-lg transition-all group cursor-pointer",
-                      activeNoteId === note.id
+                      activeNoteId === note._id
                         ? "bg-blue-50 border-blue-200 border"
                         : "bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50"
                     )}
@@ -230,7 +226,7 @@ export default function NotesPage() {
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-600"
-                        onClick={(e) => deleteNote(note.id, e)}
+                        onClick={(e) => handleDeleteNote(note._id, e)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -256,6 +252,9 @@ export default function NotesPage() {
                     className="text-lg font-semibold border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-slate-400"
                   />
                   <div className="flex items-center gap-2">
+                    {isSaving && (
+                      <span className="text-xs text-slate-400">Saving...</span>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -268,7 +267,7 @@ export default function NotesPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => deleteNote(activeNote.id, e)}
+                      onClick={(e) => handleDeleteNote(activeNote._id, e)}
                       className="h-8 w-8 p-0 text-slate-400 hover:text-red-600"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -296,7 +295,7 @@ export default function NotesPage() {
               <p className="text-lg font-medium text-slate-600">Select a note or create a new one</p>
               <p className="text-sm mt-1">Your notes are automatically saved</p>
               <Button
-                onClick={createNewNote}
+                onClick={handleCreateNote}
                 className="mt-6 bg-blue-600 hover:bg-blue-700"
               >
                 <Plus className="h-4 w-4 mr-2" />

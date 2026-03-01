@@ -133,22 +133,22 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
                 )}
               </div>
 
-              {(lead.address.street || lead.address.city) && (
+              {(lead.address?.street || lead.address?.city) && (
                 <div>
                   <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                     <MapPin className="h-4 w-4" />
                     Address
                   </label>
                   <div className="mt-1 text-gray-900">
-                    {lead.address.street && <p>{lead.address.street}</p>}
-                    {(lead.address.city || lead.address.state || lead.address.postalCode) && (
+                    {lead.address?.street && <p>{lead.address.street}</p>}
+                    {(lead.address?.city || lead.address?.state || lead.address?.postalCode) && (
                       <p>
-                        {lead.address.city}
-                        {lead.address.city && lead.address.state && ", "}
-                        {lead.address.state} {lead.address.postalCode}
+                        {lead.address?.city}
+                        {lead.address?.city && lead.address?.state && ", "}
+                        {lead.address?.state} {lead.address?.postalCode}
                       </p>
                     )}
-                    {lead.address.country && <p>{lead.address.country}</p>}
+                    {lead.address?.country && <p>{lead.address.country}</p>}
                   </div>
                   {lead.googleMapsUrl && (
                     <a
@@ -240,7 +240,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
             </CardContent>
           </Card>
 
-          {lead.address.latitude && lead.address.longitude && (
+          {lead.address?.latitude && lead.address?.longitude && (
             <Card>
               <CardHeader>
                 <CardTitle>Location</CardTitle>

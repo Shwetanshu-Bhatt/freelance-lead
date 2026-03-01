@@ -17,7 +17,7 @@ export const addressSchema = z.object({
 
 export const leadSchema = z.object({
   category: z.string().min(1, "Category is required"),
-  name: z.string().min(1, "Name is required").max(200, "Name cannot exceed 200 characters"),
+  name: z.string().max(200, "Name cannot exceed 200 characters").optional().or(z.literal("")),
   contactPerson: z.string().max(100, "Contact person cannot exceed 100 characters").optional(),
   phone: z.string().min(1, "Phone is required"),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),

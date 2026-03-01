@@ -139,16 +139,14 @@ async function migrateLeads() {
       const status = mapStatus(row.Status);
       const categoryId = categoryMap.get(row.Categories);
       
-      // Check if lead already exists (by name or phone)
+      // Check if lead already exists (by phone)
       const existingLead = await Lead.findOne({
-        $or: [
-          { name: row.Name },
-          { phone: row.Contact?.toString() }
-        ]
+        phone: row.Contact?.toString(),
+        isDeleted: false,
       });
-      
+
       if (existingLead) {
-        console.log(`  ⚠️  Skipped (exists): ${row.Name}`);
+        console.log(`  ⚠️  Skipped (duplicate phone: ${row.Contact}): ${row.Name}`);
         continue;
       }
       

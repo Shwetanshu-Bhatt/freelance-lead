@@ -43,7 +43,6 @@ const LeadSchema = new Schema<ILeadDocument>(
     },
     name: {
       type: String,
-      required: [true, "Lead name is required"],
       trim: true,
       maxlength: [200, "Name cannot be more than 200 characters"],
     },
@@ -135,14 +134,17 @@ LeadSchema.index({ status: 1, isDeleted: 1 });
 LeadSchema.index({ category: 1, isDeleted: 1 });
 LeadSchema.index({ rating: -1 });
 LeadSchema.index({ isDeleted: 1 });
-LeadSchema.index({ 
-  name: "text", 
-  phone: "text", 
-  "address.city": "text", 
-  tags: "text" 
+LeadSchema.index({
+  name: "text",
+  phone: "text",
+  "address.city": "text",
+  tags: "text"
 });
 LeadSchema.index({ createdAt: -1 });
 LeadSchema.index({ priority: 1 });
+
+// Unique index to prevent duplicate leads (same phone)
+LeadSchema.index({ phone: 1 }, { unique: true, sparse: true });
 
 const Lead = mongoose.models.Lead || mongoose.model<ILeadDocument>("Lead", LeadSchema);
 

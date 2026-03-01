@@ -135,30 +135,52 @@ export async function getLeadById(id: string) {
 export async function createLead(data: LeadInput) {
   try {
     const validated = leadSchema.parse(data);
-    
+
     await connectDB();
-    
+
+    // Check for duplicate lead (same phone)
+    const existingLead = await Lead.findOne({
+      phone: validated.phone,
+      isDeleted: false,
+    });
+
+    if (existingLead) {
+      return {
+        success: false,
+        error: `A lead with phone "${validated.phone}" already exists.`,
+      };
+    }
+
     const leadData = {
       ...validated,
       lastActivityAt: new Date(),
       contactedAt: validated.status === "contacted" ? new Date() : undefined,
     };
-    
+
     const lead = await Lead.create(leadData);
-    
+
     const populatedLead = await Lead.findById(lead._id)
       .populate("category", "name slug")
       .lean();
-    
+
     revalidatePath("/leads");
     revalidatePath("/dashboard");
-    
+
     return {
       success: true,
       data: JSON.parse(JSON.stringify(populatedLead)),
     };
   } catch (error) {
     console.error("Error creating lead:", error);
+
+    // Handle MongoDB duplicate key error (E11000)
+    if (error && typeof error === "object" && "code" in error && error.code === 11000) {
+      return {
+        success: false,
+        error: "A lead with this name and phone number already exists.",
+      };
+    }
+
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to create lead",
@@ -169,9 +191,9 @@ export async function createLead(data: LeadInput) {
 export async function updateLead(id: string, data: Partial<LeadInput>) {
   try {
     const validated = leadSchema.partial().parse(data);
-    
+
     await connectDB();
-    
+
     const existingLead = await Lead.findById(id);
     if (!existingLead) {
       return {
@@ -179,32 +201,57 @@ export async function updateLead(id: string, data: Partial<LeadInput>) {
         error: "Lead not found",
       };
     }
-    
+
+    // Check for duplicate if phone is being updated
+    if (validated.phone) {
+      const duplicateLead = await Lead.findOne({
+        phone: validated.phone,
+        isDeleted: false,
+        _id: { $ne: id }, // Exclude the current lead being updated
+      });
+
+      if (duplicateLead) {
+        return {
+          success: false,
+          error: `A lead with phone "${validated.phone}" already exists.`,
+        };
+      }
+    }
+
     const updateData: Record<string, unknown> = {
       ...validated,
       lastActivityAt: new Date(),
     };
-    
+
     if (validated.status === "contacted" && existingLead.status !== "contacted") {
       updateData.contactedAt = new Date();
     }
-    
+
     const lead = await Lead.findByIdAndUpdate(
       id,
       updateData,
       { new: true }
     ).populate("category", "name slug");
-    
+
     revalidatePath("/leads");
     revalidatePath(`/leads/${id}`);
     revalidatePath("/dashboard");
-    
+
     return {
       success: true,
       data: JSON.parse(JSON.stringify(lead)),
     };
   } catch (error) {
     console.error("Error updating lead:", error);
+
+    // Handle MongoDB duplicate key error (E11000)
+    if (error && typeof error === "object" && "code" in error && error.code === 11000) {
+      return {
+        success: false,
+        error: "A lead with this name and phone number already exists.",
+      };
+    }
+
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to update lead",
